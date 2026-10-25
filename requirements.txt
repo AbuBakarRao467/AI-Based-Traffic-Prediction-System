@@ -1,0 +1,15 @@
+streamlit
+streamlit-folium
+folium
+geopy
+requests
+ultralytics
+opencv-python
+numpy
+pandas 
+fastapi
+uvicorn
+python-multipart
+
+
+
