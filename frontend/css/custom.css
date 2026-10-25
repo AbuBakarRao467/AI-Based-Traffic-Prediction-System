@@ -1,0 +1,352 @@
+/* ==========================================================================
+   AI Traffic System — design system
+   Vernacular: road markings, signal lights, sign panels, asphalt.
+   Colour carries meaning. Status colours are signal colours only.
+   ========================================================================== */
+
+:root {
+  /* surfaces */
+  --chalk: 246 245 242;
+  --surface: 255 255 255;
+  --asphalt: 35 38 45;
+  --line: 223 221 214;
+
+  /* text */
+  --ink: 26 28 33;
+  --muted: 104 110 120;
+
+  /* brand */
+  --paint: 244 178 35;
+  --paint-deep: 176 122 10;
+  --paint-wash: 254 246 226;
+
+  /* signal palette — status only */
+  --go: 30 142 90;
+  --go-wash: 227 243 235;
+  --wait: 199 107 12;
+  --wait-wash: 253 240 223;
+  --stop: 192 52 45;
+  --stop-wash: 252 233 231;
+
+  /* module identity */
+  --clay: 166 74 36;
+  --clay-wash: 250 236 229;
+  --petrol: 20 86 99;
+  --petrol-wash: 225 240 243;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background-color: rgb(var(--chalk));
+  color: rgb(var(--ink));
+  font-family: Inter, system-ui, sans-serif;
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .display {
+  font-family: "Barlow Condensed", Inter, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-family: "Barlow Condensed", Inter, sans-serif;
+  font-weight: 600;
+}
+
+/* --- painted lane line: the recurring structural motif ------------------- */
+
+.lane-rule {
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgb(var(--paint)) 0 26px,
+    transparent 26px 44px
+  );
+}
+
+.lane-rule--solid { height: 4px; background: rgb(var(--paint)); }
+
+/* --- surfaces ----------------------------------------------------------- */
+
+.panel {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-md);
+}
+
+/* sign panel: heavier frame, for headline readouts */
+.sign {
+  background: rgb(var(--surface));
+  border: 2px solid rgb(var(--asphalt));
+  border-radius: var(--radius-lg);
+  box-shadow: 4px 4px 0 rgb(var(--asphalt) / 0.08);
+}
+
+/* module card: identity colour lives in a top bar, nowhere else */
+.module-card {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-md);
+  border-top: 3px solid var(--module, rgb(var(--paint)));
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.module-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgb(var(--asphalt) / 0.08);
+}
+
+/* --- controls ----------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: .7rem 1.4rem;
+  transition: background-color .15s ease, transform .1s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn-paint { background: rgb(var(--paint)); color: rgb(var(--asphalt)); }
+.btn-paint:hover { background: rgb(var(--paint-deep)); color: #fff; }
+.btn-ghost {
+  background: transparent;
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--line));
+}
+.btn-ghost:hover { border-color: rgb(var(--asphalt)); }
+
+input[type="text"], input[type="password"] {
+  width: 100%;
+  font: inherit;
+  padding: .65rem .85rem;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: var(--radius-sm);
+  color: rgb(var(--ink));
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+input::placeholder { color: rgb(var(--muted) / .75); }
+input:focus {
+  outline: none;
+  border-color: rgb(var(--paint-deep));
+  box-shadow: 0 0 0 3px rgb(var(--paint) / .3);
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--paint-deep));
+  outline-offset: 2px;
+}
+
+/* travel-mode selector */
+.mode-pill-group {
+  display: inline-flex;
+  background: rgb(var(--chalk));
+  border: 1px solid rgb(var(--line));
+  border-radius: 999px;
+  padding: 3px;
+}
+.mode-pill {
+  font-size: .85rem;
+  font-weight: 500;
+  padding: .4rem 1rem;
+  border-radius: 999px;
+  color: rgb(var(--muted));
+  cursor: pointer;
+  user-select: none;
+  transition: background-color .15s ease, color .15s ease;
+}
+.mode-pill.active {
+  background: rgb(var(--asphalt));
+  color: rgb(var(--paint));
+  font-weight: 600;
+}
+
+/* --- navigation --------------------------------------------------------- */
+
+.nav-link {
+  color: rgb(var(--muted));
+  text-decoration: none;
+  font-size: .9rem;
+  font-weight: 500;
+  padding-bottom: 3px;
+  border-bottom: 2px solid transparent;
+  transition: color .15s ease, border-color .15s ease;
+}
+.nav-link:hover { color: rgb(var(--ink)); }
+.nav-active {
+  color: rgb(var(--ink));
+  border-bottom-color: rgb(var(--paint));
+  font-weight: 600;
+}
+
+/* --- status chips ------------------------------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .78rem;
+  font-weight: 600;
+  padding: .22rem .65rem;
+  border-radius: 999px;
+}
+.chip-go    { background: rgb(var(--go-wash));    color: rgb(var(--go)); }
+.chip-wait  { background: rgb(var(--wait-wash));  color: rgb(var(--wait)); }
+.chip-stop  { background: rgb(var(--stop-wash));  color: rgb(var(--stop)); }
+.chip-paint { background: rgb(var(--paint-wash)); color: rgb(var(--paint-deep)); }
+
+.note {
+  border-radius: var(--radius-md);
+  padding: .9rem 1.1rem;
+  font-size: .9rem;
+  font-weight: 500;
+  border-left: 4px solid currentColor;
+}
+.note-go   { background: rgb(var(--go-wash));   color: rgb(var(--go)); }
+.note-wait { background: rgb(var(--wait-wash)); color: rgb(var(--wait)); }
+.note-stop { background: rgb(var(--stop-wash)); color: rgb(var(--stop)); }
+
+/* --- route option cards: paint stripe on the leading edge ---------------- */
+
+.route-card {
+  border: 1px solid rgb(var(--line));
+  border-left: 4px solid rgb(var(--line));
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: .8rem 1rem;
+  cursor: pointer;
+  background: rgb(var(--surface));
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.route-card:hover { border-left-color: rgb(var(--muted)); }
+.route-card.selected {
+  border-left-color: rgb(var(--paint));
+  background: rgb(var(--paint-wash));
+}
+
+/* --- severity ladder ---------------------------------------------------- */
+
+.rung {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .7rem;
+  border-radius: var(--radius-sm);
+  transition: background-color .25s ease;
+}
+.rung-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: rgb(var(--line));
+  transition: all .25s ease;
+}
+.rung-label { font-size: .9rem; color: rgb(var(--muted)); transition: all .25s ease; }
+.rung.on { background: rgb(var(--chalk)); }
+.rung.on .rung-dot { width: 14px; height: 14px; background: var(--rung-colour, rgb(var(--paint))); }
+.rung.on .rung-label { color: rgb(var(--ink)); font-weight: 600; }
+
+/* --- dark map: tiles inverted so route lines stay true colour ------------ */
+
+.dark-map { background: rgb(var(--asphalt)); }
+.dark-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(.94) contrast(.9);
+}
+.route-label {
+  background: rgb(var(--asphalt));
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / .25);
+  border-radius: 999px;
+  padding: .25rem .7rem;
+  font-size: .75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* --- upload zone -------------------------------------------------------- */
+
+.drop-zone {
+  border: 2px dashed rgb(var(--line));
+  border-radius: var(--radius-md);
+  padding: 2.5rem 1rem;
+  text-align: center;
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.drop-zone:hover {
+  border-color: rgb(var(--paint));
+  background: rgb(var(--paint-wash) / .5);
+}
+
+.thumb {
+  width: 68px; height: 50px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.thumb:hover { border-color: rgb(var(--paint)); transform: translateY(-2px); }
+
+/* --- motion: one orchestrated moment per page --------------------------- */
+
+@keyframes paint-on { to { stroke-dashoffset: 0; } }
+.draw {
+  stroke-dasharray: var(--len, 600);
+  stroke-dashoffset: var(--len, 600);
+  animation: paint-on 1.6s cubic-bezier(.4, 0, .2, 1) .25s forwards;
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.rise { animation: rise .45s ease-out both; }
+
+@keyframes signal-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.blink { animation: signal-blink 1.8s ease-in-out infinite; }
+
+@keyframes shimmer { to { background-position: 200% 0; } }
+.skeleton {
+  background: linear-gradient(90deg, rgb(var(--line) / .5) 25%, rgb(var(--line) / .9) 37%, rgb(var(--line) / .5) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* --- asphalt hero band -------------------------------------------------- */
+
+.asphalt-band {
+  background: rgb(var(--asphalt));
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.asphalt-band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgb(255 255 255 / .05) 1px, transparent 1px);
+  background-size: 18px 18px;
+  pointer-events: none;
+}
+.asphalt-band > * { position: relative; z-index: 1; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem; }

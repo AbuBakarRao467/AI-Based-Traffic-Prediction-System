@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authority dashboard — AI Traffic System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/custom.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  /* ---------- app shell ---------- */
+  .dash-shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    background: rgb(var(--asphalt));
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    padding: 1.5rem 1rem 1.25rem;
+  }
+  /* painted lane line along the sidebar edge */
+  .sidebar::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 4px;
+    background: repeating-linear-gradient(180deg, rgb(var(--paint)) 0 22px, transparent 22px 38px);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    text-decoration: none;
+    padding: 0 .5rem;
+  }
+  .brand span { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 1.2rem; color: #fff; }
+
+  .side-nav { display: flex; flex-direction: column; gap: .2rem; }
+  .side-link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .6rem .8rem;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    color: rgb(255 255 255 / .72);
+    text-decoration: none;
+    font-size: .92rem;
+    font-weight: 500;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .side-link:hover { background: rgb(255 255 255 / .06); color: #fff; }
+  .side-link.active {
+    background: rgb(255 255 255 / .09);
+    color: #fff;
+    border-left-color: rgb(var(--paint));
+  }
+  .side-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .side-user {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgb(255 255 255 / .14);
+    display: flex;
+    flex-direction: column;
+    gap: .8rem;
+  }
+  .user-row { display: flex; align-items: center; gap: .7rem; padding: 0 .3rem; }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgb(var(--paint));
+    color: rgb(var(--asphalt));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem;
+    flex-shrink: 0;
+  }
+  .user-name { font-size: .9rem; font-weight: 600; line-height: 1.2; }
+  .user-role { font-size: .75rem; color: rgb(255 255 255 / .55); }
+  .signout {
+    background: transparent;
+    border: 1px solid rgb(255 255 255 / .22);
+    color: rgb(255 255 255 / .85);
+    border-radius: 8px;
+    padding: .5rem .8rem;
+    font: inherit;
+    font-size: .85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .signout:hover { background: rgb(255 255 255 / .08); border-color: rgb(255 255 255 / .4); }
+
+  /* ---------- main column ---------- */
+  .dash-main { padding: 1.75rem 2rem 3rem; min-width: 0; }
+
+  .dash-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .dash-head h1 { font-size: clamp(1.9rem, 3.4vw, 2.5rem); line-height: 1.05; margin-bottom: .35rem; }
+  .dash-head p { margin: 0; color: rgb(var(--muted)); font-size: .92rem; max-width: 54ch; line-height: 1.55; }
+  .head-actions { display: flex; align-items: center; gap: .8rem; }
+  .stamp { font-size: .82rem; color: rgb(var(--muted)); }
+  .refresh {
+    display: inline-flex; align-items: center; gap: .5rem;
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--line));
+    border-radius: 8px;
+    padding: .5rem .9rem;
+    font: inherit; font-size: .88rem; font-weight: 600;
+    color: rgb(var(--ink));
+    cursor: pointer;
+    transition: border-color .15s ease;
+  }
+  .refresh:hover:not(:disabled) { border-color: rgb(var(--asphalt)); }
+  .refresh:disabled { opacity: .6; cursor: default; }
+  .refresh svg { width: 15px; height: 15px; }
+  .refresh.spin svg { animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- KPI tiles ---------- */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .kpi { padding: 1.1rem 1.25rem; }
+  .kpi-label {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .85rem; font-weight: 600; color: rgb(var(--muted));
+  }
+  .kpi-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .kpi-num { font-size: 2.7rem; line-height: 1.05; margin: .35rem 0 .15rem; }
+  .kpi-sub { font-size: .78rem; color: rgb(var(--muted)); }
+
+  /* ---------- panels ---------- */
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    padding: .9rem 1.1rem;
+    border-bottom: 1px solid rgb(var(--line));
+  }
+  .panel-head h2 { font-size: 1.25rem; }
+  .legend { display: flex; gap: .9rem; font-size: .78rem; color: rgb(var(--muted)); }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; }
+
+  .row-map {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-rows: 540px;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .row-map > .panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  #map { flex: 1; min-height: 340px; }
+
+  .rank-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: .75rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .rank-item {
+    display: flex;
+    gap: .8rem;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    background: rgb(var(--chalk));
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: .75rem .85rem;
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
+  }
+  .rank-item:hover { border-color: rgb(var(--line)); }
+  .rank-item.selected { border-color: rgb(var(--paint)); background: rgb(var(--paint-wash)); }
+  .rank-n { font-size: 1.5rem; line-height: 1; color: rgb(var(--muted)); min-width: 1.3rem; padding-top: .1rem; }
+  .rank-body { flex: 1; min-width: 0; }
+  .rank-top { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+  .rank-name { font-weight: 600; font-size: .9rem; }
+  .bar { height: 5px; border-radius: 3px; background: rgb(var(--line)); margin: .5rem 0 .4rem; overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: 3px; transition: width .6s ease; }
+  .rank-meta { font-size: .76rem; color: rgb(var(--muted)); }
+
+  .row-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  /* ---------- priority matrix ---------- */
+  .matrix-wrap { padding: 1rem 1.1rem 1.1rem; }
+  .matrix-note { margin: 0 0 .9rem; font-size: .82rem; color: rgb(var(--muted)); line-height: 1.5; }
+  .matrix {
+    display: grid;
+    grid-template-columns: 58px repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .mx-axis { font-size: .74rem; font-weight: 600; color: rgb(var(--muted)); display: flex; align-items: center; }
+  .mx-col { justify-content: center; padding-top: .15rem; text-align: center; }
+  .mx-cell {
+    min-height: 68px;
+    border-radius: 8px;
+    display: flex; flex-wrap: wrap; gap: 4px;
+    align-items: center; justify-content: center;
+    align-content: center;
+    padding: 4px;
+  }
+  .mx-cell.z-urgent  { background: rgb(var(--stop-wash)); }
+  .mx-cell.z-monitor { background: rgb(var(--wait-wash)); }
+  .mx-cell.z-low     { background: rgb(var(--go-wash)); }
+  .mx-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    color: #fff;
+    font: inherit; font-size: .78rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgb(0 0 0 / .25);
+    transition: transform .15s ease;
+  }
+  .mx-dot:hover { transform: scale(1.15); }
+  .mx-dot.selected { outline: 3px solid rgb(var(--asphalt)); outline-offset: 1px; }
+  .zone-key { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .9rem; font-size: .76rem; color: rgb(var(--muted)); }
+  .zone-key i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: .35rem; vertical-align: -2px; }
+
+  /* ---------- table ---------- */
+  .filters { display: flex; gap: .35rem; flex-wrap: wrap; }
+  .filter {
+    font: inherit; font-size: .78rem; font-weight: 600;
+    padding: .3rem .75rem;
+    border-radius: 999px;
+    border: 1px solid rgb(var(--line));
+    background: rgb(var(--surface));
+    color: rgb(var(--muted));
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .filter:hover { border-color: rgb(var(--asphalt)); color: rgb(var(--ink)); }
+  .filter.on { background: rgb(var(--asphalt)); border-color: rgb(var(--asphalt)); color: rgb(var(--paint)); }
+
+  .table-wrap { overflow-x: auto; }
+  .dtable { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 540px; }
+  .dtable th {
+    text-align: left; font-size: .75rem; font-weight: 600;
+    color: rgb(var(--muted));
+    padding: .65rem .9rem;
+    background: rgb(var(--chalk));
+  }
+  .dtable td { padding: .7rem .9rem; border-top: 1px solid rgb(var(--line)); vertical-align: middle; }
+  .t-row { cursor: pointer; transition: background-color .15s ease; }
+  .t-row:hover { background: rgb(var(--chalk)); }
+  .t-row.selected { background: rgb(var(--paint-wash)); }
+  .t-row:focus-visible { outline-offset: -2px; }
+  .cell-main { font-weight: 600; }
+  .cell-sub { font-size: .75rem; color: rgb(var(--muted)); margin-top: .1rem; }
+  .score-cell { display: flex; align-items: center; gap: .6rem; min-width: 96px; }
+  .score-cell .bar { flex: 1; margin: 0; }
+  .empty { padding: 2rem 1rem; text-align: center; color: rgb(var(--muted)); font-size: .9rem; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1180px) {
+    .row-detail { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .row-map { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+    #map { min-height: 380px; }
+    .rank-list { max-height: 420px; }
+  }
+  @media (max-width: 900px) {
+    .dash-shell { grid-template-columns: minmax(0, 1fr); }
+    .sidebar {
+      position: static; height: auto;
+      flex-direction: row; flex-wrap: wrap; align-items: center;
+      gap: .6rem 1.25rem; padding: .85rem 1rem;
+    }
+    .sidebar::after { top: auto; left: 0; width: auto; height: 4px;
+      background: repeating-linear-gradient(90deg, rgb(var(--paint)) 0 22px, transparent 22px 38px); }
+    .side-nav { flex-direction: row; flex-wrap: wrap; }
+    .side-link { border-left: 0; border-bottom: 3px solid transparent; padding: .45rem .6rem; }
+    .side-link.active { border-bottom-color: rgb(var(--paint)); }
+    .side-user { margin: 0 0 0 auto; padding: 0; border: 0; flex-direction: row; align-items: center; }
+    .user-meta { display: none; }
+    .dash-main { padding: 1.25rem 1rem 2.5rem; }
+  }
+  @media (max-width: 560px) {
+    .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== Gate: nobody signed in ========== -->
+<div id="access-denied" style="display:none;">
+  <div class="wrap" style="padding-top:5rem;padding-bottom:6rem;">
+    <div class="sign" style="max-width:32rem;margin:0 auto;padding:2.5rem;text-align:center;">
+      <div style="width:56px;height:56px;border-radius:var(--radius-md);background:rgb(var(--petrol-wash));display:flex;align-items:center;justify-content:center;margin:0 auto 1.2rem;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgb(20,86,99)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l8 4v5c0 4.4-3.4 8.3-8 9-4.6-.7-8-4.6-8-9V7l8-4z"/>
+        </svg>
+      </div>
+      <h1 style="font-size:1.9rem;margin-bottom:.6rem;">This area is for traffic authority staff</h1>
+      <p style="color:rgb(var(--muted));line-height:1.6;margin:0 0 1.8rem;">
+        The dashboard shows which roads need repair work first, based on how much
+        traffic they carry and how damaged their surface is. Sign in to open it.
+      </p>
+      <div style="display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;">
+        <a href="login.html" class="btn btn-paint" style="text-decoration:none;">Sign in</a>
+        <a href="signup.html" class="btn btn-ghost" style="text-decoration:none;">Register</a>
+      </div>
+      <p style="margin:1.5rem 0 0;font-size:.88rem;"><a href="route-planner.html" class="nav-link">Back to the route planner</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Dashboard shell ========== -->
+<div id="dash-shell" class="dash-shell" style="display:none;">
+
+  <aside class="sidebar">
+    <a href="index.html" class="brand">
+      <img src="assets/logo.svg" alt="" style="width:26px;height:26px;">
+      <span>AI Traffic System</span>
+    </a>
+
+    <nav class="side-nav" aria-label="Main">
+      <a href="authority.html" class="side-link active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Overview
+      </a>
+      <a href="route-planner.html" class="side-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>
+        Route planner
+      </a>
+      <a href="vehicle-detection.html" class="side-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/></svg>
+        Traffic prediction
+      </a>
+      <a href="road-damage.html" class="side-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L5 21M16 3l3 18M12 4v3M12 11v3M12 18v3"/></svg>
+        Road damage
+      </a>
+    </nav>
+
+    <div class="side-user">
+      <div class="user-row">
+        <div class="avatar" id="user-initials">--</div>
+        <div class="user-meta">
+          <div class="user-name" id="user-name">Signed in</div>
+          <div class="user-role">Traffic authority</div>
+        </div>
+      </div>
+      <button class="signout" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="dash-main">
+
+    <header class="dash-head">
+      <div>
+        <h1>Repair priority</h1>
+        <p>Each checkpoint is scored on traffic volume against surface damage, so the busiest broken roads come first.</p>
+      </div>
+      <div class="head-actions">
+        <span class="stamp" id="stamp"></span>
+        <button class="refresh" id="refresh-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </header>
+
+    <div id="dash-error" class="note note-stop" style="display:none;margin-bottom:1rem;">
+      Couldn't load checkpoint data. Check that the backend is running, then refresh.
+    </div>
+
+    <section class="kpi-grid" aria-label="Summary">
+      <div class="panel kpi">
+        <div class="kpi-label">Checkpoints monitored</div>
+        <div class="num kpi-num" id="kpi-total">0</div>
+        <div class="kpi-sub">each scored on traffic and surface</div>
+      </div>
+      <div class="panel kpi">
+        <div class="kpi-label"><span class="kpi-dot" style="background:rgb(var(--stop));"></span>Urgent</div>
+        <div class="num kpi-num" id="kpi-urgent" style="color:rgb(var(--stop));">0</div>
+        <div class="kpi-sub" id="kpi-urgent-sub">of all checkpoints</div>
+      </div>
+      <div class="panel kpi">
+        <div class="kpi-label"><span class="kpi-dot" style="background:rgb(var(--wait));"></span>Under watch</div>
+        <div class="num kpi-num" id="kpi-monitor" style="color:rgb(var(--wait));">0</div>
+        <div class="kpi-sub" id="kpi-monitor-sub">of all checkpoints</div>
+      </div>
+      <div class="panel kpi">
+        <div class="kpi-label"><span class="kpi-dot" style="background:rgb(var(--go));"></span>Holding up well</div>
+        <div class="num kpi-num" id="kpi-low" style="color:rgb(var(--go));">0</div>
+        <div class="kpi-sub" id="kpi-low-sub">of all checkpoints</div>
+      </div>
+    </section>
+
+    <section class="row-map">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Checkpoint map</h2>
+          <div class="legend">
+            <span><i style="background:#C0342D"></i>Urgent</span>
+            <span><i style="background:#C76B0C"></i>Monitor</span>
+            <span><i style="background:#1E8E5A"></i>Low</span>
+          </div>
+        </div>
+        <div id="map" class="dark-map"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Ranked by urgency</h2></div>
+        <div id="rank-list" class="rank-list"></div>
+      </div>
+    </section>
+
+    <section class="row-detail">
+      <div class="panel">
+        <div class="panel-head"><h2>Priority matrix</h2></div>
+        <div class="matrix-wrap">
+          <p class="matrix-note">
+            Where each checkpoint sits on traffic volume (rows) against surface damage (columns).
+            Numbers match the ranking. Top-right is the worst place to be.
+          </p>
+          <div class="matrix" id="matrix"></div>
+          <div class="zone-key">
+            <span><i style="background:rgb(var(--stop-wash));"></i>Urgent zone</span>
+            <span><i style="background:rgb(var(--wait-wash));"></i>Monitor zone</span>
+            <span><i style="background:rgb(var(--go-wash));"></i>Low priority zone</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Checkpoint details</h2>
+          <div class="filters" id="filters"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="dtable">
+            <thead>
+              <tr>
+                <th style="width:42px;">#</th>
+                <th>Location</th>
+                <th>Traffic</th>
+                <th>Surface</th>
+                <th>Score</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  const CITY_CENTER = [29.3956, 71.6836];
+
+  const PRIORITY = {
+    "Urgent":       { colour: "#C0342D", chip: "chip-stop", zone: "z-urgent"  },
+    "Monitor":      { colour: "#C76B0C", chip: "chip-wait", zone: "z-monitor" },
+    "Low Priority": { colour: "#1E8E5A", chip: "chip-go",   zone: "z-low"     },
+  };
+
+  // Same weighting the backend uses, so each matrix cell can be shaded by the zone it falls in.
+  const TRAFFIC_WEIGHT = { Low: 1, Medium: 2, High: 3 };
+  const DAMAGE_WEIGHT  = { None: 0, Minor: 1, Moderate: 2, Severe: 3 };
+  const TRAFFIC_ROWS   = ["High", "Medium", "Low"];
+  const DAMAGE_COLS    = ["None", "Minor", "Moderate", "Severe"];
+
+  function zoneFor(traffic, damage) {
+    const score = Math.round(((TRAFFIC_WEIGHT[traffic] + DAMAGE_WEIGHT[damage]) / 6) * 100);
+    return score >= 70 ? "Urgent" : score >= 40 ? "Monitor" : "Low Priority";
+  }
+
+  const state = { checkpoints: [], selectedId: null, filter: "All" };
+  let map = null;
+  let markerLayer = null;
+  const markers = {};
+
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  /* ---------- rendering ---------- */
+
+  function renderKPIs(animate) {
+    const cps = state.checkpoints;
+    const total = cps.length;
+    const count = (label) => cps.filter((c) => c.priority_label === label).length;
+    const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
+
+    const values = {
+      "kpi-total":   total,
+      "kpi-urgent":  count("Urgent"),
+      "kpi-monitor": count("Monitor"),
+      "kpi-low":     count("Low Priority"),
+    };
+    Object.entries(values).forEach(([id, n]) => {
+      const el = document.getElementById(id);
+      if (animate) countUp(el, n); else el.textContent = n;
+    });
+
+    document.getElementById("kpi-urgent-sub").textContent  = `${pct(values["kpi-urgent"])}% of all checkpoints`;
+    document.getElementById("kpi-monitor-sub").textContent = `${pct(values["kpi-monitor"])}% of all checkpoints`;
+    document.getElementById("kpi-low-sub").textContent     = `${pct(values["kpi-low"])}% of all checkpoints`;
+  }
+
+  function renderMarkers() {
+    markerLayer.clearLayers();
+    Object.keys(markers).forEach((k) => delete markers[k]);
+
+    state.checkpoints.forEach((cp) => {
+      const style = PRIORITY[cp.priority_label];
+      const marker = L.circleMarker([cp.lat, cp.lon], {
+        radius: 10, fillColor: style.colour, color: "#23262D", weight: 3, fillOpacity: 1,
+      })
+        .bindPopup(
+          `<strong>${esc(cp.name)}</strong><br>` +
+          `Traffic: ${esc(cp.traffic_level)} (${cp.vehicle_count} vehicles)<br>` +
+          `Surface: ${esc(cp.damage_level)} (${cp.damage_count} marks)<br>` +
+          `Score: ${cp.priority_score} of 100`
+        )
+        .on("click", () => select(cp.id, { fly: false }));
+      marker.addTo(markerLayer);
+      markers[cp.id] = marker;
+    });
+
+    if (state.checkpoints.length) {
+      const bounds = L.latLngBounds(state.checkpoints.map((c) => [c.lat, c.lon]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  }
+
+  function renderRanking() {
+    const list = document.getElementById("rank-list");
+    list.innerHTML = "";
+
+    if (!state.checkpoints.length) {
+      list.innerHTML = `<div class="empty">No checkpoints are being monitored yet.</div>`;
+      return;
+    }
+
+    state.checkpoints.forEach((cp, i) => {
+      const style = PRIORITY[cp.priority_label];
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "rank-item rise";
+      item.dataset.id = cp.id;
+      item.style.animationDelay = `${i * 0.06}s`;
+      item.innerHTML = `
+        <span class="num rank-n">${i + 1}</span>
+        <span class="rank-body">
+          <span class="rank-top">
+            <span class="rank-name">${esc(cp.name)}</span>
+            <span class="chip ${style.chip}">${esc(cp.priority_label)}</span>
+          </span>
+          <span class="bar" style="display:block;"><span style="width:${cp.priority_score}%;background:${style.colour};"></span></span>
+          <span class="rank-meta">Score ${cp.priority_score} of 100 · ${esc(cp.traffic_level)} traffic · ${esc(cp.damage_level)} surface</span>
+        </span>
+      `;
+      item.addEventListener("click", () => select(cp.id));
+      list.appendChild(item);
+    });
+  }
+
+  function renderMatrix() {
+    const el = document.getElementById("matrix");
+    el.innerHTML = "";
+
+    TRAFFIC_ROWS.forEach((traffic) => {
+      const label = document.createElement("div");
+      label.className = "mx-axis";
+      label.textContent = `${traffic} traffic`;
+      el.appendChild(label);
+
+      DAMAGE_COLS.forEach((damage) => {
+        const cell = document.createElement("div");
+        cell.className = `mx-cell ${PRIORITY[zoneFor(traffic, damage)].zone}`;
+
+        state.checkpoints.forEach((cp, i) => {
+          if (cp.traffic_level !== traffic || cp.damage_level !== damage) return;
+          const dot = document.createElement("button");
+          dot.type = "button";
+          dot.className = "mx-dot";
+          dot.dataset.id = cp.id;
+          dot.style.background = PRIORITY[cp.priority_label].colour;
+          dot.textContent = i + 1;
+          dot.title = `${cp.name} — score ${cp.priority_score}`;
+          dot.addEventListener("click", () => select(cp.id));
+          cell.appendChild(dot);
+        });
+        el.appendChild(cell);
+      });
+    });
+
+    el.appendChild(document.createElement("div"));
+    DAMAGE_COLS.forEach((damage) => {
+      const col = document.createElement("div");
+      col.className = "mx-axis mx-col";
+      col.textContent = damage === "None" ? "No damage" : damage;
+      el.appendChild(col);
+    });
+  }
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    const options = ["All", "Urgent", "Monitor", "Low Priority"];
+    el.innerHTML = "";
+    options.forEach((opt) => {
+      const n = opt === "All"
+        ? state.checkpoints.length
+        : state.checkpoints.filter((c) => c.priority_label === opt).length;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `filter ${state.filter === opt ? "on" : ""}`;
+      btn.textContent = `${opt === "Low Priority" ? "Low" : opt} ${n}`;
+      btn.addEventListener("click", () => {
+        state.filter = opt;
+        renderFilters();
+        renderTable();
+      });
+      el.appendChild(btn);
+    });
+  }
+
+  function renderTable() {
+    const body = document.getElementById("table-body");
+    body.innerHTML = "";
+
+    const rows = state.checkpoints
+      .map((cp, i) => ({ cp, rank: i + 1 }))
+      .filter(({ cp }) => state.filter === "All" || cp.priority_label === state.filter);
+
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="6"><div class="empty">Nothing in this group right now.</div></td></tr>`;
+      return;
+    }
+
+    rows.forEach(({ cp, rank }) => {
+      const style = PRIORITY[cp.priority_label];
+      const tr = document.createElement("tr");
+      tr.className = "t-row";
+      tr.tabIndex = 0;
+      tr.dataset.id = cp.id;
+      tr.innerHTML = `
+        <td class="num" style="color:rgb(var(--muted));font-size:1.1rem;">${rank}</td>
+        <td><div class="cell-main">${esc(cp.name)}</div></td>
+        <td><div class="cell-main">${esc(cp.traffic_level)}</div><div class="cell-sub">${cp.vehicle_count} vehicles</div></td>
+        <td><div class="cell-main">${esc(cp.damage_level)}</div><div class="cell-sub">${cp.damage_count} marks</div></td>
+        <td>
+          <div class="score-cell">
+            <span class="num" style="font-size:1.15rem;">${cp.priority_score}</span>
+            <span class="bar"><span style="width:${cp.priority_score}%;background:${style.colour};"></span></span>
+          </div>
+        </td>
+        <td><span class="chip ${style.chip}">${esc(cp.priority_label)}</span></td>
+      `;
+      tr.addEventListener("click", () => select(cp.id));
+      tr.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(cp.id); }
+      });
+      body.appendChild(tr);
+    });
+    updateSelection();
+  }
+
+  /* ---------- selection: one checkpoint highlighted everywhere ---------- */
+
+  function updateSelection() {
+    document.querySelectorAll("[data-id]").forEach((el) => {
+      el.classList.toggle("selected", el.dataset.id === state.selectedId);
+    });
+    Object.entries(markers).forEach(([id, marker]) => {
+      const on = id === state.selectedId;
+      marker.setStyle({ radius: on ? 14 : 10, weight: on ? 4 : 3, color: on ? "#F4B223" : "#23262D" });
+      if (on) marker.bringToFront();
+    });
+  }
+
+  function select(id, { fly = true } = {}) {
+    state.selectedId = id;
+    updateSelection();
+    const cp = state.checkpoints.find((c) => c.id === id);
+    if (!cp || !markers[id]) return;
+    if (fly) map.flyTo([cp.lat, cp.lon], Math.max(map.getZoom(), 14), { duration: 0.8 });
+    markers[id].openPopup();
+  }
+
+  /* ---------- data ---------- */
+
+  async function loadData(isRefresh) {
+    const btn = document.getElementById("refresh-btn");
+    const label = btn.querySelector("span");
+    btn.disabled = true;
+    btn.classList.add("spin");
+    label.textContent = "Refreshing…";
+    document.getElementById("dash-error").style.display = "none";
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/authority/priority-report`);
+      if (!res.ok) throw new Error("Bad response");
+      const data = await res.json();
+
+      state.checkpoints = data.checkpoints;
+      if (!state.checkpoints.some((c) => c.id === state.selectedId)) state.selectedId = null;
+
+      renderKPIs(!isRefresh);
+      renderMarkers();
+      renderRanking();
+      renderMatrix();
+      renderFilters();
+      renderTable();
+      updateSelection();
+
+      document.getElementById("stamp").textContent =
+        "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    } catch (err) {
+      document.getElementById("dash-error").style.display = "";
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove("spin");
+      label.textContent = "Refresh";
+    }
+  }
+
+  /* ---------- start-up ---------- */
+
+  function initials(name) {
+    return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "--";
+  }
+
+  function boot() {
+    const user = getCurrentUser();
+    if (!user || user.role !== "admin") {
+      document.getElementById("access-denied").style.display = "";
+      return;
+    }
+
+    document.getElementById("dash-shell").style.display = "";
+    document.getElementById("user-name").textContent = user.name;
+    document.getElementById("user-initials").textContent = initials(user.name);
+
+    map = L.map("map", { zoomControl: false }).setView(CITY_CENTER, 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+    markerLayer = L.layerGroup().addTo(map);
+    setTimeout(() => map.invalidateSize(), 100);
+
+    document.getElementById("refresh-btn").addEventListener("click", () => loadData(true));
+    loadData(false);
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+</script>
+</body>
+</html>

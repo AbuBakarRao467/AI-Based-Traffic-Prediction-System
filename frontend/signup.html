@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authority registration — AI Traffic System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+<div style="min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr);">
+
+  <div class="asphalt-band" style="display:none;padding:3rem;flex-direction:column;justify-content:space-between;" id="side-panel">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:.55rem;text-decoration:none;width:fit-content;">
+      <img src="assets/logo.svg" alt="" style="width:26px;height:26px;">
+      <span class="display" style="font-size:1.2rem;color:#fff;">AI Traffic System</span>
+    </a>
+
+    <div style="max-width:30rem;">
+      <h1 style="font-size:2.6rem;line-height:1.05;color:#fff;margin-bottom:.9rem;">
+        Registration is verified, not open.
+      </h1>
+      <p style="color:rgb(255 255 255 / .7);line-height:1.6;margin:0 0 1.75rem;">
+        Your department issues an access code. Without it an account can't be created,
+        which keeps maintenance data with the people responsible for it.
+      </p>
+
+      <div style="border:1px solid rgb(255 255 255 / .2);border-radius:var(--radius-md);padding:1rem 1.2rem;display:flex;gap:.8rem;align-items:center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4B223" stroke-width="2" stroke-linecap="round">
+          <circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15.5 12v2"/>
+        </svg>
+        <span style="color:rgb(255 255 255 / .8);font-size:.88rem;">
+          Ask your department administrator for the current code.
+        </span>
+      </div>
+    </div>
+
+    <p style="color:rgb(255 255 255 / .45);font-size:.8rem;margin:0;">
+      Travelling instead? The route planner needs no account.
+    </p>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:center;padding:2.5rem 1.5rem;">
+    <div style="width:100%;max-width:23rem;">
+
+      <a href="index.html" style="display:inline-flex;align-items:center;gap:.5rem;text-decoration:none;color:inherit;margin-bottom:2rem;" id="mobile-brand">
+        <img src="assets/logo.svg" alt="" style="width:24px;height:24px;">
+        <span class="display" style="font-size:1.1rem;">AI Traffic System</span>
+      </a>
+
+      <h2 style="font-size:2rem;margin-bottom:.3rem;">Create an account</h2>
+      <p style="color:rgb(var(--muted));margin:0 0 1.75rem;font-size:.92rem;">
+        For traffic authority staff.
+      </p>
+
+      <form id="signup-form" style="display:flex;flex-direction:column;gap:.9rem;">
+        <div>
+          <label for="name" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Full name</label>
+          <input id="name" type="text" required placeholder="Ayesha Khan">
+        </div>
+        <div>
+          <label for="username" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Username</label>
+          <input id="username" type="text" required placeholder="Pick a username">
+        </div>
+        <div>
+          <label for="password" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Password</label>
+          <input id="password" type="password" required placeholder="At least 6 characters">
+        </div>
+        <div>
+          <label for="access-code" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Authority access code</label>
+          <input id="access-code" type="text" required placeholder="Issued by your department">
+        </div>
+
+        <div id="message-box" style="display:none;"></div>
+
+        <button type="submit" class="btn btn-paint" style="justify-content:center;width:100%;margin-top:.3rem;">
+          Create account
+        </button>
+      </form>
+
+      <p style="font-size:.9rem;color:rgb(var(--muted));margin-top:1.5rem;">
+        Already registered?
+        <a href="login.html" style="color:rgb(var(--paint-deep));font-weight:600;">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+  @media (min-width: 900px) {
+    body > div:first-child { grid-template-columns: 1.1fr 1fr; }
+    #side-panel { display: flex !important; }
+    #mobile-brand { display: none !important; }
+  }
+</style>
+
+<script src="js/app.js"></script>
+<script>
+  document.getElementById("signup-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name       = document.getElementById("name").value.trim();
+    const username   = document.getElementById("username").value.trim();
+    const password   = document.getElementById("password").value;
+    const accessCode = document.getElementById("access-code").value.trim();
+    const box        = document.getElementById("message-box");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, name, access_code: accessCode }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        box.className = "note note-go";
+        box.textContent = data.message;
+        box.style.display = "";
+        setTimeout(() => (window.location.href = "login.html"), 1600);
+      } else {
+        box.className = "note note-stop";
+        box.textContent = data.message;
+        box.style.display = "";
+      }
+    } catch (err) {
+      box.className = "note note-stop";
+      box.textContent = "Can't reach the server. Check that the backend is running.";
+      box.style.display = "";
+    }
+  });
+</script>
+</body>
+</html>

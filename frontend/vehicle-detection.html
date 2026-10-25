@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traffic prediction — AI Traffic System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+<nav style="background:rgb(var(--surface));border-bottom:1px solid rgb(var(--line));">
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-top:1rem;padding-bottom:1rem;flex-wrap:wrap;">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:.5rem;text-decoration:none;color:inherit;">
+      <img src="assets/logo.svg" alt="" style="width:24px;height:24px;">
+      <span class="display" style="font-size:1.15rem;">AI Traffic System</span>
+    </a>
+    <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;">
+      <a href="route-planner.html" class="nav-link">Route planner</a>
+      <a href="vehicle-detection.html" class="nav-link nav-active">Traffic prediction</a>
+      <a href="road-damage.html" class="nav-link">Road damage</a>
+      <a href="login.html" id="authority-nav-link" class="nav-link">Authority sign in</a>
+    </div>
+  </div>
+</nav>
+<div class="lane-rule"></div>
+
+<div class="wrap" style="padding-top:2.5rem;padding-bottom:1.5rem;display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;">
+  <div style="flex:1;min-width:260px;">
+    <h1 style="font-size:clamp(2rem,4.5vw,2.8rem);line-height:1.05;margin-bottom:.55rem;">Traffic prediction</h1>
+    <p style="color:rgb(var(--muted));margin:0;max-width:54ch;line-height:1.6;">
+      A YOLOv8 detector counts vehicles in a road image, and that count decides how
+      busy the road is called. Pick a sample or bring your own frame.
+    </p>
+  </div>
+  <div class="sign" style="padding:1rem 1.25rem;min-width:170px;">
+    <div style="font-size:.78rem;color:rgb(var(--muted));margin-bottom:.4rem;">Density bands</div>
+    <div style="display:flex;flex-direction:column;gap:.35rem;font-size:.82rem;">
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:rgb(var(--go));margin-right:.45rem;"></span>Low — up to 5</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:rgb(var(--wait));margin-right:.45rem;"></span>Medium — 6 to 15</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:rgb(var(--stop));margin-right:.45rem;"></span>High — over 15</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" style="padding-bottom:1.5rem;">
+  <div class="panel" style="padding:1.5rem;">
+    <p style="margin:0 0 .7rem;font-size:.85rem;font-weight:600;">Start with a sample frame</p>
+    <div id="sample-images-container" style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.2rem;"></div>
+
+    <label for="image-input" style="display:block;cursor:pointer;">
+      <div id="drop-zone" class="drop-zone">
+        <div style="width:44px;height:44px;border-radius:50%;background:rgb(var(--paint-wash));display:flex;align-items:center;justify-content:center;margin:0 auto .7rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgb(176,122,10)" stroke-width="2" stroke-linecap="round">
+            <path d="M12 17V4M12 4l-5 5M12 4l5 5M4 19h16"/>
+          </svg>
+        </div>
+        <p style="margin:0;font-weight:600;font-size:.95rem;">Upload a traffic image</p>
+        <p style="margin:.25rem 0 0;font-size:.82rem;color:rgb(var(--muted));">JPG or PNG</p>
+      </div>
+    </label>
+    <input id="image-input" type="file" accept="image/*" style="display:none;">
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="loading" style="display:none;padding:2.5rem 0;">
+    <div style="display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+      <div class="skeleton" style="height:220px;"></div>
+      <div class="skeleton" style="height:220px;"></div>
+    </div>
+    <p style="text-align:center;color:rgb(var(--muted));font-size:.9rem;margin-top:1rem;">Reading the frame…</p>
+  </div>
+
+  <div id="results" style="display:none;gap:1.25rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
+    <div class="panel" style="padding:1rem;">
+      <p style="margin:0 0 .7rem;font-size:.85rem;font-weight:600;">What the model saw</p>
+      <img id="result-image" alt="Detection result" style="width:100%;border-radius:var(--radius-sm);display:block;">
+    </div>
+
+    <div class="sign" style="padding:1.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+      <svg width="220" height="128" viewBox="0 0 200 116" aria-hidden="true">
+        <path d="M18 100 A82 82 0 0 1 74 24" stroke="rgb(30,142,90)" stroke-width="15" fill="none" stroke-linecap="round"/>
+        <path d="M80 21 A82 82 0 0 1 120 21" stroke="rgb(199,107,12)" stroke-width="15" fill="none"/>
+        <path d="M126 24 A82 82 0 0 1 182 100" stroke="rgb(192,52,45)" stroke-width="15" fill="none" stroke-linecap="round"/>
+        <line id="gauge-needle" x1="100" y1="100" x2="100" y2="34"
+              stroke="rgb(35,38,45)" stroke-width="4" stroke-linecap="round"
+              style="transform-origin:100px 100px;transform:rotate(-72deg);transition:transform .9s cubic-bezier(.34,1.4,.64,1);"/>
+        <circle cx="100" cy="100" r="8" fill="rgb(35,38,45)"/>
+        <circle cx="100" cy="100" r="3" fill="#fff"/>
+      </svg>
+
+      <div id="traffic-level" class="display" style="font-size:2rem;margin-top:-.4rem;"></div>
+      <div style="margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgb(var(--line));width:100%;">
+        <span id="vehicle-count" class="num" style="font-size:2.6rem;line-height:1;"></span>
+        <div style="font-size:.82rem;color:rgb(var(--muted));margin-top:.15rem;">vehicles in frame</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="alert-box" style="display:none;margin-top:1.25rem;"></div>
+</div>
+
+<div style="height:4rem;"></div>
+
+<script src="js/app.js"></script>
+<script>
+  const imageInput = document.getElementById("image-input");
+  const dropZone   = document.getElementById("drop-zone");
+  const loadingEl  = document.getElementById("loading");
+  const resultsEl  = document.getElementById("results");
+  const alertBox   = document.getElementById("alert-box");
+  const needle     = document.getElementById("gauge-needle");
+
+  const BANDS = {
+    Low:    { tone: "go",   angle: -52, msg: "Clear road. This is a good time to travel." },
+    Medium: { tone: "wait", angle: 0,   msg: "Moderately busy. Expect some slowing." },
+    High:   { tone: "stop", angle: 52,  msg: "Heavy congestion. An alternative route will be faster." },
+  };
+
+  async function processImage(file) {
+    resultsEl.style.display = "none";
+    alertBox.style.display = "none";
+    loadingEl.style.display = "";
+
+    try {
+      const data = await callDetectionAPI("/api/traffic-estimation", file);
+      const band = BANDS[data.traffic_level] || BANDS.Medium;
+
+      document.getElementById("result-image").src = base64ToImageSrc(data.annotated_image);
+
+      const levelEl = document.getElementById("traffic-level");
+      levelEl.textContent = `${data.traffic_level} traffic`;
+      levelEl.style.color = `rgb(var(--${band.tone}))`;
+
+      needle.style.transform = `rotate(${band.angle}deg)`;
+
+      loadingEl.style.display = "none";
+      resultsEl.style.display = "grid";
+      resultsEl.classList.remove("rise");
+      void resultsEl.offsetWidth;
+      resultsEl.classList.add("rise");
+
+      countUp(document.getElementById("vehicle-count"), data.vehicle_count);
+
+      alertBox.className = `note note-${band.tone} rise`;
+      alertBox.textContent = band.msg;
+      alertBox.style.display = "";
+    } catch (err) {
+      loadingEl.style.display = "none";
+      dropZone.innerHTML = `<p style="margin:0;color:rgb(var(--stop));font-weight:500;">
+        Couldn't reach the detection service. Check that the backend is running, then try again.
+      </p>`;
+    }
+  }
+
+  imageInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) processImage(file);
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadSampleImages("sample-images-container", "traffic", processImage);
+  });
+</script>
+</body>
+</html>

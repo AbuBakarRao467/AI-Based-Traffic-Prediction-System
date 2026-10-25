@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Traffic System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+<div class="asphalt-band">
+  <div class="wrap" style="padding-top:2rem;padding-bottom:0;">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:.55rem;text-decoration:none;">
+      <img src="assets/logo.svg" alt="" style="width:26px;height:26px;">
+      <span class="display" style="font-size:1.25rem;color:#fff;">AI Traffic System</span>
+    </a>
+  </div>
+
+  <div class="wrap" style="padding-top:3.5rem;padding-bottom:4rem;display:grid;gap:3rem;grid-template-columns:minmax(0,1fr);">
+    <div style="max-width:34rem;">
+      <h1 style="font-size:clamp(2.6rem,6vw,4.2rem);line-height:.98;color:#fff;margin-bottom:1rem;">
+        Roads tell you what<br>they need. This reads them.
+      </h1>
+      <p style="font-size:1.05rem;line-height:1.6;color:rgb(255 255 255 / .72);margin:0 0 2rem;">
+        Cameras watch traffic build up and road surfaces break down. The system turns
+        that into a route for you, and a repair list for the people who maintain the road.
+      </p>
+      <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+        <a href="route-planner.html" class="btn btn-paint" style="text-decoration:none;">Plan a route</a>
+        <a href="login.html" class="btn btn-ghost" style="text-decoration:none;color:#fff;border-color:rgb(255 255 255 / .3);">
+          Authority sign in
+        </a>
+      </div>
+    </div>
+
+    <svg viewBox="0 0 640 170" style="width:100%;height:auto;max-width:640px;" aria-hidden="true">
+      <rect x="0" y="118" width="640" height="46" rx="6" fill="#2E323A"/>
+      <path d="M10 141 H630" stroke="#4A4F58" stroke-width="2" stroke-dasharray="22 18"/>
+      <path id="hero-road" d="M20 128 C 140 70, 250 132, 360 74 C 450 28, 540 62, 620 34"
+            fill="none" stroke="#F4B223" stroke-width="4" stroke-linecap="round"
+            class="draw" style="--len:760;"/>
+      <circle cx="20" cy="128" r="7" fill="#F4B223" stroke="#23262D" stroke-width="3"/>
+      <circle cx="620" cy="34" r="7" fill="#C0342D" stroke="#23262D" stroke-width="3"/>
+      <g class="blink">
+        <circle cx="360" cy="74" r="12" fill="#F4B223" opacity=".18"/>
+        <circle cx="360" cy="74" r="5" fill="#F4B223"/>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<div class="lane-rule"></div>
+
+<div class="wrap" style="padding-top:3.5rem;padding-bottom:4rem;">
+  <h2 style="font-size:1.9rem;margin-bottom:.4rem;">Two ways in</h2>
+  <p style="color:rgb(var(--muted));margin:0 0 2rem;max-width:36rem;">
+    Anyone can plan a route without an account. The maintenance side is limited to
+    verified traffic authority staff.
+  </p>
+
+  <div style="display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
+    <a href="route-planner.html" class="module-card" style="--module:rgb(var(--paint));padding:1.6rem;text-decoration:none;color:inherit;display:block;">
+      <h3 style="font-size:1.5rem;margin-bottom:.5rem;">I'm travelling</h3>
+      <p style="color:rgb(var(--muted));font-size:.92rem;line-height:1.55;margin:0 0 1.2rem;">
+        Compare routes between two points, with live traffic density and road surface
+        condition folded into every option.
+      </p>
+      <span class="chip chip-paint">No sign in needed</span>
+    </a>
+
+    <a href="login.html" class="module-card" style="--module:rgb(var(--petrol));padding:1.6rem;text-decoration:none;color:inherit;display:block;">
+      <h3 style="font-size:1.5rem;margin-bottom:.5rem;">I maintain the roads</h3>
+      <p style="color:rgb(var(--muted));font-size:.92rem;line-height:1.55;margin:0 0 1.2rem;">
+        See every monitored checkpoint ranked by how urgently it needs work, scored on
+        traffic volume against surface damage.
+      </p>
+      <span class="chip" style="background:rgb(var(--petrol-wash));color:rgb(var(--petrol));">Access code required</span>
+    </a>
+  </div>
+</div>
+
+<div class="wrap" style="padding-bottom:4rem;">
+  <div class="panel" style="padding:1.75rem;">
+    <h3 style="font-size:1.35rem;margin-bottom:1.1rem;">What's running underneath</h3>
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+      <div>
+        <div class="num" style="font-size:2rem;color:rgb(var(--paint-deep));">YOLOv8</div>
+        <p style="margin:.2rem 0 0;font-size:.88rem;color:rgb(var(--muted));">
+          Detects and counts vehicles in camera frames to read traffic density.
+        </p>
+      </div>
+      <div>
+        <div class="num" style="font-size:2rem;color:rgb(var(--clay));">5 classes</div>
+        <p style="margin:.2rem 0 0;font-size:.88rem;color:rgb(var(--muted));">
+          A model trained on road imagery to find cracks and potholes.
+        </p>
+      </div>
+      <div>
+        <div class="num" style="font-size:2rem;color:rgb(var(--petrol));">OSRM</div>
+        <p style="margin:.2rem 0 0;font-size:.88rem;color:rgb(var(--muted));">
+          Open routing over real road networks, with alternatives where they exist.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

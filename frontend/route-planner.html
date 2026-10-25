@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route planner — AI Traffic System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/custom.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<nav style="background:rgb(var(--surface));border-bottom:1px solid rgb(var(--line));">
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-top:1rem;padding-bottom:1rem;flex-wrap:wrap;">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:.5rem;text-decoration:none;color:inherit;">
+      <img src="assets/logo.svg" alt="" style="width:24px;height:24px;">
+      <span class="display" style="font-size:1.15rem;">AI Traffic System</span>
+    </a>
+    <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;">
+      <a href="route-planner.html" class="nav-link nav-active">Route planner</a>
+      <a href="vehicle-detection.html" class="nav-link">Traffic prediction</a>
+      <a href="road-damage.html" class="nav-link">Road damage</a>
+      <a href="login.html" id="authority-nav-link" class="nav-link">Authority sign in</a>
+    </div>
+  </div>
+</nav>
+<div class="lane-rule"></div>
+
+<div class="wrap" style="padding-top:2.5rem;padding-bottom:1.5rem;">
+  <h1 style="font-size:clamp(2rem,4.5vw,2.9rem);line-height:1.05;margin-bottom:.6rem;max-width:20ch;">
+    Plan a route with real conditions
+  </h1>
+  <p style="color:rgb(var(--muted));margin:0;max-width:52ch;line-height:1.6;">
+    Vehicle counts and road surface analysis feed into every option below.
+  </p>
+</div>
+
+<div class="wrap" style="padding-bottom:1.5rem;">
+  <div class="panel" style="padding:1.5rem;">
+    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:1.1rem;">
+      <div>
+        <label for="start-input" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Starting point</label>
+        <input id="start-input" type="text" placeholder="Farid Gate, Bahawalpur">
+      </div>
+      <div>
+        <label for="end-input" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Destination</label>
+        <input id="end-input" type="text" placeholder="Islamia University, Bahawalpur">
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <div class="mode-pill-group">
+        <span class="mode-pill active" data-mode="driving">Driving</span>
+        <span class="mode-pill" data-mode="walking">Walking</span>
+        <span class="mode-pill" data-mode="cycling">Cycling</span>
+      </div>
+      <button id="find-route-btn" class="btn btn-paint">Find routes</button>
+    </div>
+
+    <div id="status-message" style="margin-top:.9rem;font-size:.9rem;min-height:1.2rem;"></div>
+  </div>
+</div>
+
+<div class="wrap" style="padding-bottom:1rem;">
+  <div id="results-section" class="panel" style="display:none;overflow:hidden;padding:0;">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr);">
+      <div style="padding:1.25rem;border-bottom:1px solid rgb(var(--line));">
+        <p id="route-count-label" style="margin:0 0 .8rem;font-size:.85rem;color:rgb(var(--muted));"></p>
+        <div id="route-list" style="display:flex;flex-direction:column;gap:.6rem;"></div>
+      </div>
+      <div id="map" class="dark-map" style="height:420px;"></div>
+    </div>
+  </div>
+
+  <div id="route-health-box" style="display:none;"></div>
+</div>
+
+<div class="wrap" style="padding-top:2.5rem;padding-bottom:4rem;">
+  <h2 style="font-size:1.6rem;margin-bottom:1.1rem;">The models behind the numbers</h2>
+  <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+    <a href="vehicle-detection.html" class="module-card" style="--module:rgb(var(--paint));padding:1.3rem;text-decoration:none;color:inherit;display:block;">
+      <h3 style="font-size:1.3rem;margin-bottom:.4rem;">Traffic prediction</h3>
+      <p style="margin:0;font-size:.88rem;color:rgb(var(--muted));line-height:1.5;">
+        Counts vehicles in a camera frame and grades how busy the road is.
+      </p>
+    </a>
+    <a href="road-damage.html" class="module-card" style="--module:rgb(var(--clay));padding:1.3rem;text-decoration:none;color:inherit;display:block;">
+      <h3 style="font-size:1.3rem;margin-bottom:.4rem;">Road damage</h3>
+      <p style="margin:0;font-size:.88rem;color:rgb(var(--muted));line-height:1.5;">
+        Finds cracks and potholes, then grades how bad the surface is.
+      </p>
+    </a>
+    <a href="login.html" class="module-card" style="--module:rgb(var(--petrol));padding:1.3rem;text-decoration:none;color:inherit;display:block;">
+      <h3 style="font-size:1.3rem;margin-bottom:.4rem;">Authority view</h3>
+      <p style="margin:0;font-size:.88rem;color:rgb(var(--muted));line-height:1.5;">
+        Ranks every checkpoint by how urgently it needs repair work.
+      </p>
+    </a>
+  </div>
+</div>
+
+<style>
+  @media (min-width: 880px) {
+    #results-section > div { grid-template-columns: 320px minmax(0,1fr); }
+    #results-section > div > div:first-child {
+      border-bottom: 0;
+      border-right: 1px solid rgb(var(--line));
+    }
+  }
+</style>
+
+<script src="js/app.js"></script>
+<script src="js/route-planner.js"></script>
+</body>
+</html>
